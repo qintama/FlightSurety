@@ -4,11 +4,12 @@
     ```
     Truffle v5.7.4 (core: 5.7.4)
     Ganache v7.7.3
-    Solidity - ^0.4.25 (solc-js)
+    Solidity - ^0.4.24 (solc-js)
     Node v16.19.0
     Web3.js v1.8.1
     ```
 - Ganache UI version: `v2.5.4`
+- Solidity compiler version: `0.4.25`
 
 ## Install
 - `npm install`
