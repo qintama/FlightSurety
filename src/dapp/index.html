@@ -21,10 +21,60 @@
 
     <main class="container">
 
-        <div id="display-wrapper" class="top-20">
-        </div>
         <div class="row top-20">
-            <label class="form">Flight</label> <input type="text" id="flight-number"> <btn class="btn btn-primary" id="submit-oracle">Submit to Oracles</btn>
+            <label class="form">Register Airline</label> 
+            <input placeholder="address" type="text" id="register-airline-address"> 
+            <btn class="btn btn-primary" id="register-airline">Register</btn>
+        </div>
+
+        <div class="row top-20">
+            <label class="form">Fund Airline</label> 
+            <input placeholder="address" type="text" id="fund-airline-address">
+            <input placeholder="ether" type="text" id="fund-amount"> 
+            <btn class="btn btn-primary" id="fund-airline">Fund</btn>
+        </div>
+
+        <div class="row top-20">
+            <label class="form">Register Flight</label> 
+            <input placeholder="flight" type="text" id="register-flight-name">
+            <input placeholder="time" type="date" id="register-flight-departure-timestamp"> 
+            <btn class="btn btn-primary" id="register-flight">Register</btn>
+        </div>
+
+        <div class="row top-20">
+            <label class="form">Buy Insurance</label> 
+            <input placeholder="airline address" type="text" id="buy-insurance-airline">
+            <input placeholder="flight" type="text" id="buy-insurance-flight-name">
+            <input placeholder="timestamp" type="text" id="buy-insurance-flight-departure-timestamp"> 
+            <input placeholder="ether" type="text" id="buy-insurance-amount"> 
+            <btn class="btn btn-primary" id="buy-insurance">Purchase</btn>
+        </div>
+
+        <div class="row top-20">
+            <label class="form">Get Insurance Profile</label> 
+            <input placeholder="airline address" type="text" id="insruance-profile-airline">
+            <input placeholder="flight" type="text" id="insruance-profile-flight-name">
+            <input placeholder="timestamp" type="text" id="insruance-profile-flight-departure-timestamp"> 
+            <btn class="btn btn-primary" id="get-insruance-profile">Submit</btn>
+        </div>
+
+        <div class="row top-20">
+            <label class="form">Withdraw Compensation</label> 
+            <input placeholder="airline address" type="text" id="withdraw-compensation-airline">
+            <input placeholder="flight" type="text" id="withdraw-compensation-flight-name">
+            <input placeholder="timestamp" type="text" id="withdraw-compensation-flight-departure-timestamp"> 
+            <btn class="btn btn-primary" id="withdraw-compensation">Withdraw</btn>
+        </div>
+
+        <div class="row top-20">
+            <label class="form">Fetch and update flight status</label> 
+            <input placeholder="airline address" type="text" id="fetch-flight-status-airline">
+            <input placeholder="flight" type="text" id="flight-number"> 
+            <input placeholder="timestamp" type="text" id="fetch-flight-status-flight-departure-timestamp"> 
+            <btn class="btn btn-primary" id="fetch-flight-status">Submit</btn>
+        </div>
+
+        <div id="display-wrapper" class="top-20">
         </div>
     </main>
 

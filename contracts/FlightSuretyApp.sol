@@ -6,6 +6,8 @@ pragma solidity ^0.4.25;
 
 import "../node_modules/openzeppelin-solidity/contracts/math/SafeMath.sol";
 
+import "./FlightSuretyData.sol";
+
 /************************************************** */
 /* FlightSurety Smart Contract                      */
 /************************************************** */
@@ -26,14 +28,81 @@ contract FlightSuretyApp {
 
     address private contractOwner;          // Account used to deploy contract
 
-    struct Flight {
-        bool isRegistered;
-        uint8 statusCode;
-        uint256 updatedTimestamp;        
-        address airline;
-    }
-    mapping(bytes32 => Flight) private flights;
+    FlightSuretyData flightSuretyData;
 
+    // events
+    event AirLineRegistered(
+        address airline,
+        bool isRegistered,
+        uint256 registeredCount
+    );
+    
+    event AirlineAddedToVote(
+        address airline,
+        uint256 votingQueueCount
+    );
+    
+    event AirlineVotedAndRegistered(
+        address airline, 
+        uint256 votes, 
+        uint256 registeredCount, 
+        uint256 votingQueueCount
+    );
+    
+    event AirlineVoted(
+        address airline,
+        uint256 votes,
+        uint256 votingQueueCount
+    );
+
+    event AirlineParticipated(
+        address airline,
+        uint256 funding,
+        uint256 participatedCount
+    );
+
+    event FlightRegistered(
+        address airline,
+        string name,
+        uint256 departureTimestamp,
+        uint8 statusCode
+    );
+
+    event FlightChosen(
+        string name, 
+        uint256 departureTimestamp, 
+        address airline, 
+        address passenger
+    );
+
+    event InsuranceBought(
+        address passenger, 
+        uint256 insuredAmount, 
+        uint256 compensationAmount, 
+        address airline,
+        string name,
+        uint256 departureTimestamp
+    );
+
+    event FlightInsureesCredited(
+        address airline,
+        string name,
+        uint256 departureTimestamp,
+        uint8 statusCode
+    );
+
+    event FlightStatusUpdated(
+        address airline,
+        string name,
+        uint256 departureTimestamp,
+        uint8 statusCode
+    );
+
+    event InsuranceWithdrawed(
+        bool withdrawed, 
+        uint256 insuranceAmount, 
+        uint256 withdrawAmount
+    );
  
     /********************************************************************************************/
     /*                                       FUNCTION MODIFIERS                                 */
@@ -73,10 +142,12 @@ contract FlightSuretyApp {
     */
     constructor
                                 (
+                                    address dataContract
                                 ) 
                                 public 
     {
         contractOwner = msg.sender;
+        flightSuretyData = FlightSuretyData(dataContract);
     }
 
     /********************************************************************************************/
@@ -95,6 +166,27 @@ contract FlightSuretyApp {
     /*                                     SMART CONTRACT FUNCTIONS                             */
     /********************************************************************************************/
 
+    function getAirlineInfo(address airline)
+        public
+        view
+        requireIsOperational
+        returns 
+        (
+            bool registered,
+            bool participated,
+            uint256 funding,
+            bool openForVote,
+            uint256 votes
+        )
+    {
+        (
+            registered,
+            participated,
+            funding,
+            openForVote,
+            votes
+        ) = flightSuretyData.getAirlineState(airline);
+    }
   
    /**
     * @dev Add an airline to the registration queue
@@ -102,12 +194,112 @@ contract FlightSuretyApp {
     */   
     function registerAirline
                             (   
+                                address airline
                             )
-                            external
-                            pure
-                            returns(bool success, uint256 votes)
+                            public
+                            requireIsOperational
     {
-        return (success, 0);
+        require(airline != address(0), "invalid airline address");
+        require(!flightSuretyData.isAirlineRegistered(airline), "airline already registered");
+        require(!flightSuretyData.isAirlineOpenForVote(airline), "airline is already registered and open for vote");
+        require(flightSuretyData.isAirlineParticipated(msg.sender), "only participated airline can register new airline");
+
+        bool registered = false;
+        bool participated = false;
+        uint256 funding = 0;
+        bool openForVote = false;
+        uint256 votes = 0;
+
+        bool needConsensus = flightSuretyData.requireConsensus();
+
+        if (!needConsensus) {
+            registered = true;
+            flightSuretyData.setAirlineState(
+                airline, 
+                registered, 
+                participated, 
+                funding, 
+                openForVote, 
+                votes
+            );
+            uint256 registeredCount = flightSuretyData.incrementCountRegisteredAirlines();
+            
+            emit AirLineRegistered(airline, registered, registeredCount);
+        } else {
+            openForVote = true;
+            flightSuretyData.setAirlineState(
+                airline, 
+                registered, 
+                participated, 
+                funding, 
+                openForVote, 
+                votes
+            );
+            uint256 votingQueueCount = flightSuretyData.incrementCountVotingQueueAirlines();
+            emit AirlineAddedToVote(airline, votingQueueCount);
+        }
+    }
+
+    function voteAirline(address airline)
+        public
+        requireIsOperational
+    {
+        require(airline != address(0), "invalid airline address");
+        require(flightSuretyData.isAirlineParticipated(msg.sender), "only participated airline can vote an airline");
+        require(flightSuretyData.isAirlineOpenForVote(airline), "airline is not open for vote");
+        require(!flightSuretyData.isAlreadyVotedAirline(airline, msg.sender), "already voted for this ariline");
+        
+        flightSuretyData.setAirlineVoter(airline, msg.sender, true);
+        uint256 votesVoted = flightSuretyData.incrementAirlineVotes(airline);
+
+        uint256 votingQueueCount = flightSuretyData.getCountVotingQueueAirlines();
+        
+        bool over50PercentVotes = votesVoted > flightSuretyData.getCountParticipatedAirlines().div(2);
+        if (over50PercentVotes) {
+            (
+                bool registered,
+                bool participated,
+                uint256 funding,
+                bool openForVote,
+                uint256 votes
+            ) = flightSuretyData.getAirlineState(airline);
+
+            openForVote = false;
+            registered = true;
+
+            flightSuretyData.setAirlineState(
+                airline, 
+                registered, 
+                participated, 
+                funding, 
+                openForVote, 
+                votes
+            );
+
+            uint256 registeredCount = flightSuretyData.incrementCountRegisteredAirlines();
+            votingQueueCount = flightSuretyData.decrementCountVotingQueueAirlines();
+
+            emit AirlineVotedAndRegistered(airline, votes, registeredCount, votingQueueCount);
+        } else {
+            emit AirlineVoted(airline, votesVoted, votingQueueCount);
+        }
+    }
+
+    function fundAirline(address airline) 
+        public
+        payable
+        requireIsOperational
+    {
+        require(!flightSuretyData.isAirlineParticipated(airline), "airline is already participated");
+        require(msg.sender == airline, "airline can only fund itself");
+        require(msg.value >= 10 ether, "need 10 ether to fund");
+
+        (
+            uint256 funding,
+            uint256 participatedCount
+        ) = flightSuretyData.fund.value(msg.value)(airline);
+
+        emit AirlineParticipated(airline, funding, participatedCount);
     }
 
 
@@ -116,30 +308,134 @@ contract FlightSuretyApp {
     *
     */  
     function registerFlight
-                                (
-                                )
-                                external
-                                pure
+        (
+            string name,
+            uint256 departureTimestamp
+        )
+        public
+        requireIsOperational
     {
+        require(flightSuretyData.isAirlineParticipated(msg.sender), "only participated airline can register flight");
+        bytes32 key = getFlightKey(msg.sender, name, departureTimestamp);
+        require(!flightSuretyData.isFlightRegistered(key), "flight already registered");
 
+        flightSuretyData.setFlightState(
+            key,
+            true,
+            STATUS_CODE_UNKNOWN,
+            departureTimestamp,
+            msg.sender
+        );
+
+        emit FlightRegistered(msg.sender, name, departureTimestamp, STATUS_CODE_UNKNOWN);
     }
+
+    function buyInsurance 
+        (
+            address airline,
+            string name,
+            uint256 departureTimestamp
+        )
+        public
+        payable
+        requireIsOperational
+    {
+        require(msg.value <= 1 ether && msg.value > 0, "passenger can only purchase insurance upto 1 ether");
+        bytes32 key = getFlightKey(airline, name, departureTimestamp);
+        // require(flightSuretyData.getFlightPassengerTicket(key, msg.sender), "ticket is not purchased by passenger, cannot purchase insurance");
+        require(!flightSuretyData.isInsuranceBought(key, msg.sender), "flight's insruance already bought by this passenger");
+
+        (
+            uint256 insuredAmount,
+            uint256 compensationAmount
+        ) = flightSuretyData.buyInsurance.value(msg.value)(key, msg.sender);
     
+        emit InsuranceBought(
+            msg.sender, 
+            insuredAmount, 
+            compensationAmount, 
+            airline,
+            name,
+            departureTimestamp
+        );
+    }
+
+    function getInsuranceProfile
+        (
+            address airline,
+            string name,
+            uint256 departureTimestamp
+        )
+        public
+        view
+        requireIsOperational
+        returns
+        (
+            bool bought,
+            bool credited,
+            bool withdrawed,
+            uint256 balance,
+            uint256 creditBalance
+        )
+    {
+        bytes32 key = getFlightKey(airline, name, departureTimestamp);
+        require(flightSuretyData.isInsuranceBought(key, msg.sender), "flight's insruance not bought by this passenger");
+        (
+            bought,
+            credited,
+            withdrawed,
+            balance,
+            creditBalance
+        ) = flightSuretyData.getInsuranceProfile(key, msg.sender);
+    }
+
    /**
     * @dev Called after oracle has updated flight status
     *
     */  
     function processFlightStatus
-                                (
-                                    address airline,
-                                    string memory flight,
-                                    uint256 timestamp,
-                                    uint8 statusCode
-                                )
-                                internal
-                                pure
+        (
+            address airline,
+            string memory flight,
+            uint256 timestamp,
+            uint8 statusCode
+        )
+        internal
+        requireIsOperational
     {
+        bytes32 key = getFlightKey(airline, flight, timestamp);
+        flightSuretyData.updateFlightStatusCode(key, statusCode);
+
+        if (statusCode == STATUS_CODE_LATE_AIRLINE) {
+            flightSuretyData.creditInsurees(key);
+            emit FlightInsureesCredited(airline, flight, timestamp, statusCode);
+        } else {
+            emit FlightStatusUpdated(airline, flight, timestamp, statusCode);
+        }
     }
 
+    function withdrawInsurance
+        (
+            address airline,
+            string name,
+            uint256 departureTimestamp
+        ) 
+        public
+        requireIsOperational
+    {
+        bytes32 key = getFlightKey(airline, name, departureTimestamp);
+        require(flightSuretyData.isInsuranceBought(key, msg.sender), "passenger did not buy this flight's insurance");
+        require(!flightSuretyData.isPassengerCompensationWithdrawed(key, msg.sender), "passenger's insurance already withdrawed");
+        require(flightSuretyData.isPassengerInsuranceCredited(key, msg.sender), "passenger's insurance is not credited for this flight");
+
+        (
+            bool withdrawed,
+            uint256 insuranceAmount,
+            uint256 withdrawAmount
+        ) = flightSuretyData.withdrawInsurance(key, msg.sender);
+
+        emit InsuranceWithdrawed(withdrawed, insuranceAmount, withdrawAmount);
+    }
 
     // Generate a request for oracles to fetch flight information
     function fetchFlightStatus

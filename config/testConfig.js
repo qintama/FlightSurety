@@ -8,24 +8,29 @@ var Config = async function(accounts) {
     // These test addresses are useful when you need to add
     // multiple users in test scripts
     let testAddresses = [
-        "0x69e1CB5cFcA8A311586e3406ed0301C06fb839a2",
-        "0xF014343BDFFbED8660A9d8721deC985126f189F3",
-        "0x0E79EDbD6A727CfeE09A2b1d0A59F7752d5bf7C9",
-        "0x9bC1169Ca09555bf2721A5C9eC6D69c8073bfeB4",
-        "0xa23eAEf02F9E0338EEcDa8Fdd0A73aDD781b2A86",
-        "0x6b85cc8f612d5457d49775439335f83e12b8cfde",
-        "0xcbd22ff1ded1423fbc24a7af2148745878800024",
-        "0xc257274276a4e539741ca11b590b9447b26a8051",
-        "0x2f2899d6d35b1a48a4fbdc93a37a72f264a9fca7"
+        "0x4a28EB22722717398c02aeD4d8219515F297858F",
+        "0x04e177e2D3C166BEdA6a68c18E7D982d82DC8649",
+        "0x2D1fc4b3cd548577ab186D22d0e62375b7b46508",
+        "0x4a26074D3F8F32Cf10364c49FFD4268F47Fbb11b",
+        "0x3a14d001fe2D65dF381152a32BC92f16177d2594",
+        "0xdf19263a59008CCED0C8FEbB5Eb86DaAd28Cf74a",
+        "0x3D45965E2c0CAFB2e1d23bA4618f3279d709D0e6",
+        "0x64F3CE35C2B1fe23CC1d39da9e57F6Cb2Ca4a870",
+        "0x9e8988Ab26a58bAB64CA0F41c8Fc2BCD43EAd143",
+        "0xEaaa6A9d034E2C783173b3C54E9B4b2B1A8bF3Cc",
+        "0x33088D166FE3765A07F0547aa6907bC3df06E76C"
     ];
 
 
     let owner = accounts[0];
     let firstAirline = accounts[1];
 
-    let flightSuretyData = await FlightSuretyData.new();
-    let flightSuretyApp = await FlightSuretyApp.new();
-
+    let flightSuretyData = await FlightSuretyData.new(firstAirline);
+    let flightSuretyApp = await FlightSuretyApp.new(flightSuretyData.address);
+    let flightName = `flight-${Math.floor(Math.random(10))}`;
+    let nowTime = new Date();
+    nowTime.setDate(nowTime.getDate() + 1)
+    let flightDeparture = nowTime.getTime(); // depature time always on tomorrow
     
     return {
         owner: owner,
@@ -33,7 +38,9 @@ var Config = async function(accounts) {
         weiMultiple: (new BigNumber(10)).pow(18),
         testAddresses: testAddresses,
         flightSuretyData: flightSuretyData,
-        flightSuretyApp: flightSuretyApp
+        flightSuretyApp: flightSuretyApp,
+        flightName: flightName,
+        flightDeparture: flightDeparture
     }
 }
 
