@@ -25,6 +25,12 @@
     ```
     change - var mnemonic = "[Development workspace's MNEMONIC]";
     ```
+3. In Metamask, import the first 3 accounts in "Development" workspace and rename them in order to make `experience Dapp` make sense.
+    ```
+    - rename imported account 1 -> Airline1
+    - rename imported account 2 -> Airline2
+    - rename imported account 3 -> passenger
+    ```
 ## Test
 1. Switch to the "Testing" Ganache workspace
 2. go to `./config/testConfig.js`
